@@ -1,64 +1,102 @@
 const ROWS = 20,
   COLS = 20,
-  W = 40,
+  CELL_WIDTH = 40,
   MINES = 80;
-let GRID,
-  cellList = [];
-
-let make_2DArray = (row, col) => {
-  let arr = [];
-  while (row--) arr.push([]);
-  arr.forEach((rowArr, i) => {
-    let _col = col;
-    while (_col--) arr[i].push(null);
-  });
-  return arr;
-};
+let GRID;
 
 function setup() {
-  createCanvas(COLS * W + 1, ROWS * W + 1);
-  GRID = make_2DArray(ROWS, COLS);
-  GRID.forEach((row, i) => {
-    row.forEach((col, j) => {
-      GRID[i][j] = new Cell(i, j, W);
-      cellList.push({ row: i, col: j });
-    });
-  });
-  let mines = MINES;
-  while (mines--) {
-    let mine = cellList.splice(floor(random(cellList.length)), 1);
-    GRID[mine[0].row][mine[0].col].isMine = true;
-  }
+  createCanvas(COLS * CELL_WIDTH + 1, ROWS * CELL_WIDTH + 1);
+  GRID = new Grid(ROWS, COLS, CELL_WIDTH, MINES);
 }
 
 function draw() {
   background(255);
-  GRID.forEach(row => {
-    row.forEach(col => {
-      col.show();
-    });
-  });
-
-  GRID.forEach(row => {
-    row.forEach(col => {
-      col.set_val(GRID);
-    });
-  });
+  GRID.show();
 }
 
 function mousePressed() {
-  GRID.forEach(row => {
-    row.forEach(col => {
-      if (col.contains(mouseX, mouseY)) {
-        if (mouseButton === "right") col.toggleFlag();
-        if (mouseButton === "left") col.reveal(GRID);
-      }
-    });
-  });
+  let cell = GRID.get_cellAtMouse(mouseX, mouseY),
+    value;
+  if (cell === undefined) return;
+  if (mouseButton === "left") value = cell.reveal();
+  if (mouseButton === "right") cell.toggleFlag();
+  if (value === 0) GRID.reveal_area(cell); // safe area
+  if (value === -1) GRID.reveal(); // game over
 }
 
-document.addEventListener("contextmenu", function(event) {
-  let x = event.pageX,
-    y = event.pageY;
-  if (x > 8 && x < 809 && y > 8 && y < 809) event.preventDefault();
+document.addEventListener("contextmenu", e => {
+  let x = e.pageX,
+    y = e.pageY;
+  if (x > 8 && x < 809 && y > 8 && y < 809) e.preventDefault();
 });
+
+let Painter = function(x, y, w, value) {
+  this.x = x;
+  this.y = y;
+  this.w = w;
+  this.value = value;
+
+  this.unrevealed = function() {
+    stroke(0);
+    noFill();
+    rect(this.x, this.y, this.w, this.w);
+  };
+  this.numberFlagged = function() {
+    fill("#F2DCDE");
+    rect(this.x, this.y, this.w, this.w);
+    fill("black");
+    textAlign("center");
+    text(this.value, this.x + this.w / 2, this.y + 25);
+  };
+  this.blankFlagged = function() {
+    fill("#F2DCDE");
+    rect(this.x, this.y, this.w, this.w);
+  };
+  this.mineFlagged = function() {
+    fill("#D9E7CD");
+    rect(this.x, this.y, this.w, this.w);
+    fill("#444");
+    noStroke();
+    triangle(
+      this.x + this.w / 2,
+      this.y + 24,
+      this.x + this.w / 2 - 3,
+      this.y + 10,
+      this.x + this.w / 2 + 3,
+      this.y + 10
+    );
+    ellipse(x + this.w / 2, this.y + 29, 4, 4);
+  };
+  this.flagged = function() {
+    fill("#eee");
+    rect(this.x, this.y, this.w, this.w);
+    fill("#444");
+    noStroke();
+    triangle(
+      this.x + this.w / 2,
+      this.y + 24,
+      this.x + this.w / 2 - 3,
+      this.y + 10,
+      this.x + this.w / 2 + 3,
+      this.y + 10
+    );
+    ellipse(this.x + this.w / 2, this.y + 29, 4, 4);
+  };
+  this.mine = function() {
+    fill("#eee");
+    rect(this.x, this.y, this.w, this.w);
+    fill("#ccc");
+    ellipse(this.x + this.w / 2, this.y + this.w / 2, this.w / 2, this.w / 2);
+  };
+  this.number = function() {
+    fill("#ccc");
+    rect(this.x, this.y, this.w, this.w);
+    fill(0);
+    textAlign("center");
+    text(this.value, this.x + this.w / 2, this.y + 25);
+  };
+  this.blank = function() {
+    fill("#ddd");
+    rect(this.x, this.y, this.w, this.w);
+  };
+};
